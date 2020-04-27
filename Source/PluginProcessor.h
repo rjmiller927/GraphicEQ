@@ -120,17 +120,6 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GraphicEqAudioProcessor)
     
     //Construct Filter Objects
-    /*
-    Filter *lowShelf;
-    Filter *peak250;
-    Filter *peak500;
-    Filter *peak1000;
-    Filter *peak2000;
-    Filter *peak4000;
-    Filter *peak8000;
-    Filter *highShelf;
-     */
-    
     Filter lowShelf;
     Filter peak250;
     Filter peak500;
@@ -139,6 +128,17 @@ private:
     Filter peak4000;
     Filter peak8000;
     Filter highShelf;
+    
+    // Parameter smoothing
+    float alpha = 0.99f;
+    float lowShelfSmooth = 0.f;
+    float peak250Smooth = 0.f;
+    float peak500Smooth = 0.f;
+    float peak1000Smooth = 0.f;
+    float peak2000Smooth = 0.f;
+    float peak4000Smooth = 0.f;
+    float peak8000Smooth = 0.f;
+    float highShelfSmooth = 0.f;
     
     
 };

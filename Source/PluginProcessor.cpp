@@ -312,97 +312,7 @@ void GraphicEqAudioProcessor::processBlock (AudioBuffer<float> &buffer, MidiBuff
             //Current sample in our buffer
             input = buffer.getReadPointer(channel)[sample];
             
-            //Apply smoothing to filter sliders. Applies the next smoothed gain value as the gain for this sample. A we move through the samples, the gain steps incrementally avoiding sudden changes and pops
-            /*if (lowShelfSmooth->isSmoothing()){
-                if (lowShelfSmooth->getNextValue() > 12.0){
-                    *LSFgain = 12.0;
-                }
-                else if (lowShelfSmooth->getNextValue() < -24.0){
-                    *LSFgain = 24.0;
-                }
-                else{
-                    *LSFgain = lowShelfSmooth->getNextValue();
-                }
-            }
-            if (peakOneSmooth->isSmoothing()){
-                if (peakOneSmooth->getNextValue() > 12.0){
-                    *PKF1gain = 12.0;
-                }
-                else if (peakOneSmooth->getNextValue() < -24.0){
-                    *PKF1gain = 24.0;
-                }
-                else{
-                    *PKF1gain = peakOneSmooth->getNextValue();
-                }
-            }
-            if (peakTwoSmooth->isSmoothing()){
-                if (peakTwoSmooth->getNextValue() > 12.0){
-                    *PKF2gain = 12.0;
-                }
-                else if (peakTwoSmooth->getNextValue() < -24.0){
-                    *PKF2gain = 24.0;
-                }
-                else{
-                    *PKF2gain = peakTwoSmooth->getNextValue();
-                }
-            }
-            if (peakThreeSmooth->isSmoothing()){
-                if (peakThreeSmooth->getNextValue() > 12.0){
-                    *PKF3gain = 12.0;
-                }
-                else if (peakThreeSmooth->getNextValue() < -24.0){
-                    *PKF3gain = 24.0;
-                }
-                else{
-                    *PKF3gain = peakThreeSmooth->getNextValue();
-                }
-            }
-            if (peakFourSmooth->isSmoothing()){
-                if (peakFourSmooth->getNextValue() > 12.0){
-                    *PKF4gain = 12.0;
-                }
-                else if (peakFourSmooth->getNextValue() < -24.0){
-                    *PKF4gain = 24.0;
-                }
-                else{
-                    *PKF4gain = peakFourSmooth->getNextValue();
-                }
-            }
-            if (peakFiveSmooth->isSmoothing()){
-                if (peakFiveSmooth->getNextValue() > 12.0){
-                    *PKF5gain = 12.0;
-                }
-                else if (peakFiveSmooth->getNextValue() < -24.0){
-                    *PKF5gain = 24.0;
-                }
-                else{
-                    *PKF5gain = peakFiveSmooth->getNextValue();
-                }
-            }
-            if (peakSixSmooth->isSmoothing()){
-                if (peakSixSmooth->getNextValue() > 12.0){
-                    *PKF6gain = 12.0;
-                }
-                else if (peakSixSmooth->getNextValue() < -24.0){
-                    *PKF6gain = 24.0;
-                }
-                else{
-                    *PKF6gain = peakSixSmooth->getNextValue();
-                }
-            }
-            if (highShelfSmooth->isSmoothing()){
-                if (highShelfSmooth->getNextValue() > 12.0){
-                    *HSFgain = 12.0;
-                }
-                else if (highShelfSmooth->getNextValue() < -24.0){
-                    *HSFgain = 24.0;
-                }
-                else{
-                    *HSFgain = highShelfSmooth->getNextValue();
-                }
-            }
-             */
-            
+            // Filter instantaneous gain values
             float lsfGain = *state.getRawParameterValue("LSFgain");
             float gain250 = *state.getRawParameterValue("250gain");
             float gain500 = *state.getRawParameterValue("500gain");
@@ -412,15 +322,25 @@ void GraphicEqAudioProcessor::processBlock (AudioBuffer<float> &buffer, MidiBuff
             float gain8k = *state.getRawParameterValue("8kgain");
             float hsfGain = *state.getRawParameterValue("HSFgain");
             
-            //Filtering methods
-            u1 = lowShelf.lowShelfFilter(input, lsfGain, channel);
-            u2 = peak250.peakFilter(u1, gain250, channel);
-            u3 = peak500.peakFilter(u2, gain500, channel);
-            u4 = peak1000.peakFilter(u3, gain1k, channel);
-            u5 = peak2000.peakFilter(u4, gain2k, channel);
-            u6 = peak4000.peakFilter(u5, gain4k, channel);
-            u7 = peak8000.peakFilter(u6, gain8k, channel);
-            output = highShelf.highShelfFilter(u7, hsfGain, channel);
+            // Perform gain smoothing
+            lowShelfSmooth = (1.f - alpha)*lsfGain + alpha*lowShelfSmooth;
+            peak250Smooth = (1.f - alpha)*gain250 + alpha*peak250Smooth;
+            peak500Smooth = (1.f - alpha)*gain500 + alpha*peak500Smooth;
+            peak1000Smooth = (1.f - alpha)*gain1k + alpha*peak1000Smooth;
+            peak2000Smooth = (1.f - alpha)*gain2k + alpha*peak2000Smooth;
+            peak4000Smooth = (1.f - alpha)*gain4k + alpha*peak4000Smooth;
+            peak8000Smooth = (1.f - alpha)*gain8k + alpha*peak8000Smooth;
+            highShelfSmooth = (1.f - alpha)*hsfGain + alpha*highShelfSmooth;
+            
+            // Filtering methods
+            u1 = lowShelf.lowShelfFilter(input, lowShelfSmooth, channel);
+            u2 = peak250.peakFilter(u1, peak250Smooth, channel);
+            u3 = peak500.peakFilter(u2, peak500Smooth, channel);
+            u4 = peak1000.peakFilter(u3, peak1000Smooth, channel);
+            u5 = peak2000.peakFilter(u4, peak2000Smooth, channel);
+            u6 = peak4000.peakFilter(u5, peak4000Smooth, channel);
+            u7 = peak8000.peakFilter(u6, peak8000Smooth, channel);
+            output = highShelf.highShelfFilter(u7, highShelfSmooth, channel);
             
             //Output the final processed sound after all filters have been applied
             buffer.getWritePointer(channel)[sample] = output;
